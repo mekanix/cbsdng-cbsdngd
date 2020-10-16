@@ -51,18 +51,12 @@ void AsyncWorker::process()
   std::stringstream raw_data;
 
   rc = read(client, buf, sizeof(buf));
-  if (rc < 0)
-  {
-    perror("read");
-    cleanup();
-    return;
-  }
-  else if (rc == 0)
+  if (rc <= 0)
   {
     cleanup();
     return;
   }
-  else if (rc != sizeof(buf))
+  if (rc != sizeof(buf))
   {
     buf[rc] = '\0';
   }
