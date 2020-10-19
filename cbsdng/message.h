@@ -30,8 +30,7 @@ public:
 
   friend std::ostream &operator<<(std::ostream &os, const Message &m)
   {
-    os << m.id << ' ' << m.type << ' ';
-    os << m.payload.size() << ' ' << m.payload;
+    os << m.id << ' ' << m.type << ' ' << m.payload;
     return os;
   }
   friend std::istream &operator>>(std::istream &is, Message &m)

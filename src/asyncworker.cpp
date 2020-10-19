@@ -61,11 +61,10 @@ void AsyncWorker::process()
     buf[rc] = '\0';
   }
   raw_data << buf;
-  int size;
   int id;
   int type;
   std::string data;
-  raw_data >> size >> id >> type;
+  raw_data >> id >> type;
   if (raw_data.fail())
   {
     return;
