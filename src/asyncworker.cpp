@@ -88,93 +88,102 @@ void AsyncWorker::process()
 
 void AsyncWorker::execute(const Message &m)
 {
-  switch(m.gettype())
+  char prefix = 'j';
+  int childOut[2];
+  int childErr[2];
+  if (pipe(childOut) == -1)
   {
-    case 0:
-    {
-      int childOut[2];
-      int childErr[2];
-      if (pipe(childOut) == -1)
-      {
-        std::cerr << "Failed to initialize output pipe\n";
-        return;
-      }
-      if (pipe(childErr) == -1)
-      {
-        std::cerr << "Failed to initialize error pipe\n";
-        return;
-      }
+    std::cerr << "Failed to initialize output pipe\n";
+    return;
+  }
+  if (pipe(childErr) == -1)
+  {
+    std::cerr << "Failed to initialize error pipe\n";
+    return;
+  }
 
-      auto pid = fork();
-      if (pid < 0)
-      {
-        std::cerr << "Failed to fork()\n";
-        return;
-      }
-      else if (pid == 0) // child
-      {
-        close(childOut[READ_END]);
-        close(childErr[READ_END]);
-        if (dup2(childOut[WRITE_END], STDOUT_FILENO) == -1)
-        {
-          std::cerr << "Failed to redirect output\n";
-          exit(1);
-        }
-        if (dup2(childErr[WRITE_END], STDERR_FILENO) == -1)
-        {
-          std::cerr << "Failed to redirect error\n";
-          exit(1);
-        }
-        std::string command = "j" + m.getpayload();
-        std::string raw_command = "cbsd " + command;
-        std::vector<char *> args;
-        char *token = strtok(raw_command.data(), " ");
-        args.push_back(token);
-        while ((token = strtok(nullptr, " ")) != nullptr)
-        {
-          args.push_back(token);
-        }
-        execvp(args[0], args.data());
-      }
-      else // parent
-      {
-        close(childOut[WRITE_END]);
-        close(childErr[WRITE_END]);
-        int r;
-        struct kevent events[2];
-        struct kevent tevent;
-        int kq = kqueue();
-        if (kq == -1)
-        {
-          std::cerr << "kqueue: \n";
-        }
-        EV_SET(events, childOut[READ_END], EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
-        EV_SET(events+1, childErr[READ_END], EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
-        int ret = kevent(kq, events, 2, nullptr, 0, nullptr);
-        if (ret == -1)
-        {
-          std::cerr << "kevent register: " << strerror(errno) << '\n';
-        }
-        while (true)
-        {
-          int ret = kevent(kq, nullptr, 0, &tevent, 1, nullptr);
-          if (ret == -1 || tevent.data == 0) { break; }
-          char buffer[tevent.data+1];
-          r = read(tevent.ident, buffer, tevent.data);
-          if (r <= 0) { continue; }
-          buffer[r] = '\0';
-          Message m;
-          m.data(0, 0, buffer);
-          const auto &rawData = m.data();
-          write(client, rawData.data(), rawData.size());
-        }
-        int st;
-        waitpid(pid, &st, 0);
-      }
-      break;
+  int noc = m.gettype() & Type::NOCOLOR;
+  if (noc == 1)
+  {
+    std::stringstream nocolor;
+    nocolor << noc;
+    const auto data = nocolor.str();
+    if (data.size() > 0)
+    {
+      setenv("NOCOLOR", data.data(), 1);
     }
-    default:
-      break;
+  }
+  int bhyve = m.gettype() & Type::BHYVE;
+  if (bhyve > 0)
+  {
+    prefix = 'b';
+  }
+
+  auto pid = fork();
+  if (pid < 0)
+  {
+    std::cerr << "Failed to fork()\n";
+    return;
+  }
+  else if (pid == 0) // child
+  {
+    close(childOut[READ_END]);
+    close(childErr[READ_END]);
+    if (dup2(childOut[WRITE_END], STDOUT_FILENO) == -1)
+    {
+      std::cerr << "Failed to redirect output\n";
+      exit(1);
+    }
+    if (dup2(childErr[WRITE_END], STDERR_FILENO) == -1)
+    {
+      std::cerr << "Failed to redirect error\n";
+      exit(1);
+    }
+    std::string command = prefix + m.getpayload();
+    std::string raw_command = "cbsd " + command;
+    std::vector<char *> args;
+    char *token = strtok(raw_command.data(), " ");
+    args.push_back(token);
+    while ((token = strtok(nullptr, " ")) != nullptr)
+    {
+      args.push_back(token);
+    }
+    execvp(args[0], args.data());
+  }
+  else // parent
+  {
+    close(childOut[WRITE_END]);
+    close(childErr[WRITE_END]);
+    int r;
+    struct kevent events[2];
+    struct kevent tevent;
+    int kq = kqueue();
+    if (kq == -1)
+    {
+      std::cerr << "kqueue: \n";
+    }
+    EV_SET(events, childOut[READ_END], EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
+    EV_SET(events+1, childErr[READ_END], EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
+    int ret = kevent(kq, events, 2, nullptr, 0, nullptr);
+    if (ret == -1)
+    {
+      std::cerr << "kevent register: " << strerror(errno) << '\n';
+    }
+    while (true)
+    {
+      int ret = kevent(kq, nullptr, 0, &tevent, 1, nullptr);
+      if (ret == -1 || tevent.data == 0) { break; }
+      char buffer[tevent.data+1];
+      r = read(tevent.ident, buffer, tevent.data);
+      if (r <= 0) { continue; }
+      buffer[r] = '\0';
+      Message m;
+      m.data(0, 0, buffer);
+      const auto &rawData = m.data();
+      write(client, rawData.data(), rawData.size());
+    }
+    int st;
+    waitpid(pid, &st, 0);
   }
 }
 
