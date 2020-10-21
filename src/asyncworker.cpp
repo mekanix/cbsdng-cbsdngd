@@ -49,39 +49,28 @@ void AsyncWorker::process()
   int rc;
   char buf[128];
   std::stringstream raw_data;
-
   rc = read(client, buf, sizeof(buf));
   if (rc <= 0)
   {
     cleanup();
     return;
   }
-  if (rc != sizeof(buf))
-  {
-    buf[rc] = '\0';
-  }
+  if (rc != sizeof(buf)) { buf[rc] = '\0'; }
   raw_data << buf;
   int id;
   int type;
   std::string data;
   raw_data >> id >> type;
-  if (raw_data.fail())
-  {
-    return;
-  }
+  if (raw_data.fail()) { return; }
   while(!raw_data.eof())
   {
-    if (data.size() != 0)
-    {
-      data += ' ';
-    }
+    if (data.size() != 0) { data += ' '; }
     std::string s;
     raw_data >> s;
     data += s;
   }
   Message m(id, type, data);
   execute(m);
-  close(client);
 }
 
 
@@ -159,7 +148,7 @@ void AsyncWorker::execute(const Message &m)
     int kq = kqueue();
     if (kq == -1)
     {
-      std::cerr << "kqueue: \n";
+      std::cerr << "kqueue: " << strerror(errno) << '\n';
     }
     EV_SET(events, childOut[READ_END], EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
     EV_SET(events+1, childErr[READ_END], EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
@@ -199,7 +188,7 @@ void AsyncWorker::_process()
 
 void AsyncWorker::removeFinished()
 {
-  while (1)
+  while (true)
   {
     std::unique_lock<std::mutex> lock(mutex);
     condition.wait(lock, [] { return !finished.empty(); });
