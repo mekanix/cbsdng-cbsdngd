@@ -1,10 +1,14 @@
 #pragma once
-#include <cbsdng/message.h>
 
 #include <condition_variable>
 #include <list>
 #include <mutex>
 #include <thread>
+
+#include "../message.h"
+#include "client.h"
+#include "socket.h"
+
 
 class AsyncWorker
 {
@@ -17,16 +21,16 @@ public:
   static void terminate();
   static void wait();
 
-  void process();
   void cleanup();
   void execute(const Message &m);
 
 protected:
-  int client;
-  std::thread t;
+  static bool quit;
   static std::mutex mutex;
   static std::condition_variable condition;
-  static bool quit;
+
+  Client client;
+  std::thread t;
 
 private:
   void _process();
