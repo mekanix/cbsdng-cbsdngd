@@ -19,41 +19,40 @@ class Message
 public:
   Message()
   {
-    id = 0;
-    type = 0;
-    payload = "";
+    _id = 0;
+    _type = 0;
+    _payload = "";
   }
-  Message(const int &_id, const int &_type, const std::string &_payload)
+  Message(const int &id, const int &type, const std::string &payload)
   {
-    data(_id, _type, _payload);
+    data(id, type, payload);
+  }
+  Message(const int &id, const int &type, const char &payload)
+  {
+    std::string p = "";
+    p += payload;
+    data(id, type, p);
   }
 
   friend std::ostream &operator<<(std::ostream &os, const Message &m)
   {
-    os << m.id << ' ' << m.type << ' ' << m.payload;
+    os << m._id << ' ' << m._type << ' ' << m._payload;
     return os;
   }
   friend std::istream &operator>>(std::istream &is, Message &m)
   {
-    is >> m.id;
+    is >> m._id;
     if (is.fail())
     {
       std::cerr << "Failed to load id\n";
       return is;
     }
-    is >> m.type;
+    is >> m._type;
     if (is.fail())
     {
       std::cerr << "Failed to load type\n";
       return is;
     }
-    int size;
-    is >> size;
-    if (is.fail())
-    {
-      std::cerr << "Failed to load size\n";
-    }
-    ++size;
     char c;
     is.get(c);
     if (is.fail())
@@ -61,37 +60,34 @@ public:
       std::cerr << "Failed to load space after size\n";
       return is;
     }
-    char buffer[size];
-    is.get(buffer, size, '\0');
+    char buffer[1024];
+    is.get(buffer, 1024, '\0');
     if (is.fail())
     {
       std::cerr << "Failed to load payload\n";
       return is;
     }
-    m.payload = buffer;
+    m._payload += buffer;
     return is;
   }
 
-  std::string data() const
+  void data(const int &id, const int &type, const std::string &payload)
   {
-    std::stringstream s;
-    s << id << ' ' << type << ' ' << payload;
-    return s.str();
+    _id = id;
+    _type = type;
+    _payload = payload;
   }
 
-  void data(const int &_id, const int &_type, const std::string &_payload)
-  {
-    id = _id;
-    type = _type;
-    payload = _payload;
-  }
-
-  int getid() const { return id; };
-  int gettype() const { return type; };
-  std::string getpayload() const { return payload; };
+  int id() const { return _id; };
+  int type() const { return _type; };
+  std::string payload() const { return _payload; };
+  void id(const int &i) { _id = i; };
+  void type(const int &t) { _type = t; };
+  void payload(const std::string &p) { _payload = p; };
+  void resize(const size_t &size) { _payload.resize(size); };
 
 protected:
-  int id;
-  int type;
-  std::string payload;
+  int _id;
+  int _type;
+  std::string _payload;
 };

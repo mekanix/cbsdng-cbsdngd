@@ -1,10 +1,11 @@
 #include <iostream>
 #include <signal.h>
-#include <unistd.h>
 #include <stdlib.h>
+#include <termios.h>
+#include <unistd.h>
 
-#include <cbsdng/daemon/asyncworker.h>
-#include <cbsdng/daemon/socket.h>
+#include "cbsdng/daemon/asyncworker.h"
+#include "cbsdng/daemon/socket.h"
 
 
 Socket *s;
@@ -31,8 +32,6 @@ int main(int argc, char **argv)
   bool d = false;
   std::string socketPath = "/var/run/cbsdng/cbsdng.sock";
   int c;
-  int optreset = 1;
-  int optind = 1;
 
   signal(SIGINT, signalHandler);
   signal(SIGPIPE, ignoreSignal);

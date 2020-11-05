@@ -5,9 +5,9 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/event.h>
-#include <chrono>
+#include <libutil.h>
 
-#include <cbsdng/daemon/asyncworker.h>
+#include "cbsdng/daemon/asyncworker.h"
 
 
 #define READ_END 0
@@ -21,7 +21,8 @@ std::list<AsyncWorker *> AsyncWorker::finished;
 static auto finishedThread = std::thread(&AsyncWorker::removeFinished);
 
 
-AsyncWorker::AsyncWorker(const int &cl) : client{cl}
+AsyncWorker::AsyncWorker(const int &cl)
+  : client{cl}
 {
   t = std::thread(&AsyncWorker::_process, this);
 }
@@ -34,63 +35,11 @@ AsyncWorker::~AsyncWorker()
 }
 
 
-void AsyncWorker::cleanup()
-{
-  if (client != -1)
-  {
-    close(client);
-    client = -1;
-  }
-}
-
-
-void AsyncWorker::process()
-{
-  int rc;
-  char buf[128];
-  std::stringstream raw_data;
-  rc = read(client, buf, sizeof(buf));
-  if (rc <= 0)
-  {
-    cleanup();
-    return;
-  }
-  if (rc != sizeof(buf)) { buf[rc] = '\0'; }
-  raw_data << buf;
-  int id;
-  int type;
-  std::string data;
-  raw_data >> id >> type;
-  if (raw_data.fail()) { return; }
-  while(!raw_data.eof())
-  {
-    if (data.size() != 0) { data += ' '; }
-    std::string s;
-    raw_data >> s;
-    data += s;
-  }
-  Message m(id, type, data);
-  execute(m);
-}
-
-
 void AsyncWorker::execute(const Message &m)
 {
   char prefix = 'j';
-  int childOut[2];
-  int childErr[2];
-  if (pipe(childOut) == -1)
-  {
-    std::cerr << "Failed to initialize output pipe\n";
-    return;
-  }
-  if (pipe(childErr) == -1)
-  {
-    std::cerr << "Failed to initialize error pipe\n";
-    return;
-  }
-
-  int noc = m.gettype() & Type::NOCOLOR;
+  int child;
+  int noc = m.type() & Type::NOCOLOR;
   if (noc == 1)
   {
     std::stringstream nocolor;
@@ -101,13 +50,10 @@ void AsyncWorker::execute(const Message &m)
       setenv("NOCOLOR", data.data(), 1);
     }
   }
-  int bhyve = m.gettype() & Type::BHYVE;
-  if (bhyve > 0)
-  {
-    prefix = 'b';
-  }
+  int bhyve = m.type() & Type::BHYVE;
+  if (bhyve > 0) { prefix = 'b'; }
 
-  auto pid = fork();
+  auto pid = forkpty(&child, nullptr, nullptr, nullptr);
   if (pid < 0)
   {
     std::cerr << "Failed to fork()\n";
@@ -115,22 +61,10 @@ void AsyncWorker::execute(const Message &m)
   }
   else if (pid == 0) // child
   {
-    close(childOut[READ_END]);
-    close(childErr[READ_END]);
-    if (dup2(childOut[WRITE_END], STDOUT_FILENO) == -1)
-    {
-      std::cerr << "Failed to redirect output\n";
-      exit(1);
-    }
-    if (dup2(childErr[WRITE_END], STDERR_FILENO) == -1)
-    {
-      std::cerr << "Failed to redirect error\n";
-      exit(1);
-    }
-    std::string command = prefix + m.getpayload();
+    std::string command = prefix + m.payload();
     std::string raw_command = "cbsd " + command;
     std::vector<char *> args;
-    char *token = strtok(raw_command.data(), " ");
+    char *token = strtok((char *)raw_command.data(), " ");
     args.push_back(token);
     while ((token = strtok(nullptr, " ")) != nullptr)
     {
@@ -140,9 +74,6 @@ void AsyncWorker::execute(const Message &m)
   }
   else // parent
   {
-    close(childOut[WRITE_END]);
-    close(childErr[WRITE_END]);
-    int r;
     struct kevent events[2];
     struct kevent tevent;
     int kq = kqueue();
@@ -150,34 +81,45 @@ void AsyncWorker::execute(const Message &m)
     {
       std::cerr << "kqueue: " << strerror(errno) << '\n';
     }
-    EV_SET(events, childOut[READ_END], EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
-    EV_SET(events+1, childErr[READ_END], EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
-    int ret = kevent(kq, events, 2, nullptr, 0, nullptr);
-    if (ret == -1)
+    EV_SET(events, child, EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
+    EV_SET(events + 1, client.raw(), EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
+    int rc = kevent(kq, events, 2, nullptr, 0, nullptr);
+    if (rc == -1)
     {
       std::cerr << "kevent register: " << strerror(errno) << '\n';
     }
     while (true)
     {
-      int ret = kevent(kq, nullptr, 0, &tevent, 1, nullptr);
-      if (ret == -1 || tevent.data == 0) { break; }
-      char buffer[tevent.data+1];
-      r = read(tevent.ident, buffer, tevent.data);
-      if (r <= 0) { continue; }
-      buffer[r] = '\0';
+      rc = kevent(kq, nullptr, 0, &tevent, 1, nullptr);
+      if (rc == -1 || tevent.data == 0) { break; }
       Message m;
-      m.data(0, 0, buffer);
-      const auto &rawData = m.data();
-      write(client, rawData.data(), rawData.size());
+      if (tevent.ident == child)
+      {
+        char buffer[tevent.data + 1];
+        rc = read(tevent.ident, buffer, tevent.data);
+        if (rc <= 0) { continue; }
+        buffer[rc] = '\0';
+        m.data(0, 0, buffer);
+        client << m;
+      }
+      else
+      {
+        client >> m;
+        const auto &payload = m.payload();
+        write(child, payload.data(), payload.size());
+      }
     }
     int st;
     waitpid(pid, &st, 0);
   }
 }
 
+
 void AsyncWorker::_process()
 {
-  process();
+  Message m;
+  client >> m;
+  execute(m);
   {
     std::unique_lock<std::mutex> lock(mutex);
     finished.push_back(this);
@@ -218,3 +160,4 @@ void AsyncWorker::terminate()
 
 
 void AsyncWorker::wait() { finishedThread.join(); }
+void AsyncWorker::cleanup() { client.cleanup(); }

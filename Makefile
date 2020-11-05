@@ -6,7 +6,8 @@ LIBDIR = ${PREFIX}/lib
 INCLUDEDIR = ${PREFIX}/include/cbsdng
 
 CXXFLAGS += -I. -I${LOCALBASE}/include -std=c++17
-LDADD = -pthread
+LDADD += -pthread
+LDADD += -lutil
 PROG_CXX = cbsdngd
 MK_MAN = no
 SRCS != ls -1 src/*.cpp
