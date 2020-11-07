@@ -1,0 +1,26 @@
+#!/bin/sh
+# $FreeBSD$
+#
+# PROVIDE: cbsdng
+# REQUIRE: cbsdd
+
+# Add the following lines to /etc/rc.conf.local, /etc/rc.conf or
+# /etc/rc.conf.d/cbsdng to enable this service:
+#
+# cbsdng_enable (bool):      Set to NO by default.
+#                            Set it to "YES" to enable CBSDng.
+
+. /etc/rc.subr
+
+name=cbsdng
+desc="CBSDng proxy between CBSD and clients"
+rcvar=${name}_enable
+
+load_rc_config $name
+
+: ${cbsdng_enable:="NO"}
+
+command="/usr/local/bin/cbsdngd"
+command_args="-d"
+
+run_rc_command $*
