@@ -6,7 +6,10 @@ LIBDIR = ${PREFIX}/lib
 INCLUDEDIR = ${PREFIX}/include/cbsdng
 
 CXXFLAGS += -I. -I${LOCALBASE}/include -std=c++17
+LDADD += -L${LIBDIR}
 LDADD += -pthread
+LDADD += -lfmt
+LDADD += -lspdlog
 LDADD += -lutil
 PROG_CXX = cbsdngd
 MK_MAN = no

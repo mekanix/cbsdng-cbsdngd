@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/syslog_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "cbsdng/daemon/asyncworker.h"
 #include "cbsdng/daemon/socket.h"
@@ -52,8 +55,15 @@ int main(int argc, char **argv)
   if (d)
   {
     daemon(0, 0);
+    spdlog::syslog_logger_mt("default");
+  }
+  else
+  {
+    spdlog::stdout_color_mt("default");
   }
   s = new Socket(socketPath);
+  // auto logger = spdlog::get("default");
+  // logger->warn("Something wrong happened");
 
   while (1)
   {
