@@ -11,6 +11,7 @@ enum Type
   NOCOLOR = 0x1,
   JAIL = 0x2,
   BHYVE = 0x4,
+  EXIT = 0x8,
 };
 
 
@@ -18,21 +19,20 @@ class Message
 {
 public:
   Message()
-  {
-    _id = 0;
-    _type = 0;
-    _payload = "";
-  }
+    : _id{0}
+    , _type{0}
+    , _payload{""}
+  {}
   Message(const int &id, const int &type, const std::string &payload)
-  {
-    data(id, type, payload);
-  }
+    : _id{id}
+    , _type{type}
+    , _payload{payload}
+  {}
   Message(const int &id, const int &type, const char &payload)
-  {
-    std::string p = "";
-    p += payload;
-    data(id, type, p);
-  }
+    : _id{id}
+    , _type{type}
+    , _payload{payload}
+  {}
 
   friend std::ostream &operator<<(std::ostream &os, const Message &m)
   {
@@ -69,13 +69,6 @@ public:
     }
     m._payload += buffer;
     return is;
-  }
-
-  void data(const int &id, const int &type, const std::string &payload)
-  {
-    _id = id;
-    _type = type;
-    _payload = payload;
   }
 
   int id() const { return _id; };

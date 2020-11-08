@@ -54,7 +54,7 @@ void AsyncWorker::execute(const Message &m)
   if (bhyve > 0) { prefix = 'b'; }
 
   auto pid = forkpty(&child, nullptr, nullptr, nullptr);
-  if (pid < 0)
+  if (pid < 0) // forking or pty failed
   {
     std::cerr << "Failed to fork()\n";
     return;
@@ -77,10 +77,7 @@ void AsyncWorker::execute(const Message &m)
     struct kevent events[2];
     struct kevent tevent;
     int kq = kqueue();
-    if (kq == -1)
-    {
-      std::cerr << "kqueue: " << strerror(errno) << '\n';
-    }
+    if (kq == -1) { std::cerr << "kqueue: " << strerror(errno) << '\n'; }
     EV_SET(events, child, EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
     EV_SET(events + 1, client.raw(), EVFILT_READ, EV_ADD | EV_CLEAR, NOTE_READ, 0, nullptr);
     int rc = kevent(kq, events, 2, nullptr, 0, nullptr);
@@ -92,18 +89,18 @@ void AsyncWorker::execute(const Message &m)
     {
       rc = kevent(kq, nullptr, 0, &tevent, 1, nullptr);
       if (rc == -1 || tevent.data == 0) { break; }
-      Message m;
       if (tevent.ident == child)
       {
         char buffer[tevent.data + 1];
         rc = read(tevent.ident, buffer, tevent.data);
         if (rc <= 0) { continue; }
         buffer[rc] = '\0';
-        m.data(0, 0, buffer);
+        Message m(0, 0, buffer);
         client << m;
       }
       else
       {
+        Message m;
         client >> m;
         const auto &payload = m.payload();
         write(child, payload.data(), payload.size());
@@ -111,6 +108,10 @@ void AsyncWorker::execute(const Message &m)
     }
     int st;
     waitpid(pid, &st, 0);
+    std::stringstream s;
+    s << st;
+    Message m(0, Type::EXIT, s.str());
+    client << m;
   }
 }
 
@@ -136,14 +137,8 @@ void AsyncWorker::removeFinished()
     condition.wait(lock, [] { return !finished.empty(); });
     auto worker = finished.front();
     finished.pop_front();
-    if (worker != nullptr)
-    {
-      delete worker;
-    }
-    if (quit && finished.empty())
-    {
-      return;
-    }
+    if (worker != nullptr) { delete worker; }
+    if (quit && finished.empty()) { return; }
   }
 }
 

@@ -1,7 +1,6 @@
 #include <iostream>
 #include <signal.h>
 #include <stdlib.h>
-#include <termios.h>
 #include <unistd.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/syslog_sink.h>
@@ -12,6 +11,7 @@
 
 
 Socket *s;
+auto logger = spdlog::syslog_logger_mt("syslog");
 
 
 void signalHandler(int sig)
@@ -20,6 +20,7 @@ void signalHandler(int sig)
   AsyncWorker::terminate();
   AsyncWorker::wait();
   s->cleanup();
+  delete s;
   exit(0);
 }
 
@@ -31,13 +32,11 @@ void ignoreSignal(int sig)
 
 int main(int argc, char **argv)
 {
+  spdlog::get("syslog")->warn("Akumulator");
   const auto optstr = "ds:";
   bool d = false;
   std::string socketPath = "/var/run/cbsdng/cbsdng.sock";
   int c;
-
-  signal(SIGINT, signalHandler);
-  signal(SIGPIPE, ignoreSignal);
 
   while ((c = getopt(argc, argv, optstr)) != -1) {
     switch (c) {
@@ -51,6 +50,11 @@ int main(int argc, char **argv)
         return 1;
     }
   }
+
+  s = new Socket(socketPath);
+
+  signal(SIGINT, signalHandler);
+  signal(SIGPIPE, ignoreSignal);
 
   if (d)
   {
@@ -68,15 +72,8 @@ int main(int argc, char **argv)
   while (1)
   {
     auto client = s->waitForClient();
-    if (client != -1)
-    {
-      new AsyncWorker(client);
-    }
-    else
-    {
-      std::cerr << "Error accepting client!\n";
-    }
+    if (client != -1) { new AsyncWorker(client); }
+    else { std::cerr << "Error accepting client!\n"; }
   }
-  delete s;
   return 0;
 }
