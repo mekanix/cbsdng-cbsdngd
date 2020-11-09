@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <sys/event.h>
 #include <libutil.h>
+#include <spdlog/spdlog.h>
 
 #include "cbsdng/daemon/asyncworker.h"
 
@@ -37,6 +38,7 @@ AsyncWorker::~AsyncWorker()
 
 void AsyncWorker::execute(const Message &m)
 {
+  auto logger = spdlog::get("default");
   char prefix = 'j';
   int child;
   int noc = m.type() & Type::NOCOLOR;
@@ -56,7 +58,7 @@ void AsyncWorker::execute(const Message &m)
   auto pid = forkpty(&child, nullptr, nullptr, nullptr);
   if (pid < 0) // forking or pty failed
   {
-    std::cerr << "Failed to fork()\n";
+    logger->error("Failed to fork()");
     return;
   }
   else if (pid == 0) // child
