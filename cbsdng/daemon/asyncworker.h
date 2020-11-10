@@ -21,7 +21,6 @@ public:
   static void terminate();
   static void wait();
 
-  void cleanup();
   void execute(const Message &m);
 
 protected:
