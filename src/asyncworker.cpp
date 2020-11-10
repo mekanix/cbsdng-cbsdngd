@@ -29,13 +29,6 @@ AsyncWorker::AsyncWorker(const int &cl)
 }
 
 
-AsyncWorker::~AsyncWorker()
-{
-  t.join();
-  cleanup();
-}
-
-
 void AsyncWorker::execute(const Message &m)
 {
   auto logger = spdlog::get("default");
@@ -157,4 +150,4 @@ void AsyncWorker::terminate()
 
 
 void AsyncWorker::wait() { finishedThread.join(); }
-void AsyncWorker::cleanup() { client.cleanup(); }
+AsyncWorker::~AsyncWorker() { t.join(); }
