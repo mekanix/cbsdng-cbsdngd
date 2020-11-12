@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -33,13 +34,17 @@ void ignoreSignal(int sig)
 int main(int argc, char **argv)
 {
   spdlog::get("syslog")->warn("Akumulator");
-  const auto optstr = "ds:";
+  const auto optstr = "dp:s:";
   bool d = false;
   std::string socketPath = "/var/run/cbsdng/cbsdng.sock";
+  std::string pidPath;
   int c;
 
   while ((c = getopt(argc, argv, optstr)) != -1) {
     switch (c) {
+      case 'p':
+        pidPath = optarg;
+        break;
       case 's':
         socketPath = optarg;
         break;
@@ -66,6 +71,15 @@ int main(int argc, char **argv)
     spdlog::stdout_color_mt("default");
   }
   s = new Socket(socketPath);
+
+  if (pidPath.size() > 0)
+  {
+    auto mypid = getpid();
+    std::ofstream pidfile;
+    pidfile.open(pidPath);
+    pidfile << getpid();
+    pidfile.close();
+  }
   // auto logger = spdlog::get("default");
   // logger->warn("Something wrong happened");
 

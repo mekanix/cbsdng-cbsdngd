@@ -15,12 +15,19 @@
 name=cbsdng
 desc="CBSDng proxy between CBSD and clients"
 rcvar=${name}_enable
+start_precmd="${name}_precmd"
 
 load_rc_config $name
 
 : ${cbsdng_enable:="NO"}
 
+pidfile="/var/run/cbsdng/cbsdng.pid"
 command="/usr/local/bin/cbsdngd"
-command_args="-d"
+command_args="-d -p ${pidfile}"
+
+cbsdng_precmd()
+{
+  /usr/bin/install -d -m 0755 -o root /var/run/cbsdng
+}
 
 run_rc_command $*
