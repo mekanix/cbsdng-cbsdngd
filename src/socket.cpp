@@ -8,7 +8,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include "cbsdng/daemon/socket.h"
+#include "cbsdng/proxy/socket.h"
 
 
 Socket::Socket(const std::string &socket_path) : socketPath{socket_path}

@@ -8,7 +8,7 @@
 #include <libutil.h>
 #include <spdlog/spdlog.h>
 
-#include "cbsdng/daemon/asyncworker.h"
+#include "cbsdng/proxy/asyncworker.h"
 
 
 #define READ_END 0
