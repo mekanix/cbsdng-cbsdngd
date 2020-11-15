@@ -8,7 +8,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include "cbsdng/daemon/client.h"
+#include "cbsdng/proxy/client.h"
 
 
 Client::Client(const int &cl) : fd{cl}

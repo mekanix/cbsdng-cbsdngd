@@ -7,8 +7,8 @@
 #include <spdlog/sinks/syslog_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
-#include "cbsdng/daemon/asyncworker.h"
-#include "cbsdng/daemon/socket.h"
+#include "cbsdng/proxy/asyncworker.h"
+#include "cbsdng/proxy/socket.h"
 
 
 Socket *s;
