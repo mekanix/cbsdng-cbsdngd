@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <sys/event.h>
 #include <libutil.h>
+#include <termios.h>
 #include <spdlog/spdlog.h>
 
 #include "cbsdng/proxy/asyncworker.h"
@@ -57,7 +58,7 @@ void AsyncWorker::execute(const Message &m)
   else if (pid == 0) // child
   {
     std::string command = prefix + m.payload();
-    std::string raw_command = "cbsd " + command;
+    std::string raw_command = "/usr/local/bin/cbsd " + command;
     std::vector<char *> args;
     char *token = strtok((char *)raw_command.data(), " ");
     args.push_back(token);

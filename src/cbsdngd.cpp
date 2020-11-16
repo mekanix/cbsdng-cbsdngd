@@ -12,7 +12,6 @@
 
 
 Socket *s;
-auto logger = spdlog::syslog_logger_mt("syslog");
 
 
 void signalHandler(int sig)
@@ -26,14 +25,10 @@ void signalHandler(int sig)
 }
 
 
-void ignoreSignal(int sig)
-{
-  signal(sig, SIG_IGN);
-}
+void ignoreSignal(int sig) { signal(sig, SIG_IGN); }
 
 int main(int argc, char **argv)
 {
-  spdlog::get("syslog")->warn("Akumulator");
   const auto optstr = "dp:s:";
   bool d = false;
   std::string socketPath = "/var/run/cbsdng/cbsdng.sock";
