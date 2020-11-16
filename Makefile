@@ -17,11 +17,11 @@ SRCS != ls -1 src/*.cpp
 
 MAININCS = cbsdng/message.h
 MAININCSDIR = ${INCLUDEDIR}
-DAEMONINCS != ls -1 cbsdng/daemon/*.h
-DAEMONINCSDIR = ${INCLUDEDIR}/daemon
-INCSGROUPS = MAININCS DAEMONINCS
+PROXYINCS != ls -1 cbsdng/proxy/*.h
+PROXYINCSDIR = ${INCLUDEDIR}/proxy
+INCSGROUPS = MAININCS PROXYINCS
 
 beforeinstall:
-	${INSTALL} -d -m 0755 ${DESTDIR}${INCLUDEDIR}/daemon
+	${INSTALL} -d -m 0755 ${DESTDIR}${INCLUDEDIR}/proxy
 
 .include <bsd.prog.mk>
