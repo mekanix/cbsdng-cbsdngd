@@ -58,7 +58,7 @@ void AsyncWorker::execute(const Message &m)
   else if (pid == 0) // child
   {
     std::string command = prefix + m.payload();
-    std::string raw_command = "/usr/local/bin/cbsd " + command;
+    std::string raw_command = "cbsd " + command;
     std::vector<char *> args;
     char *token = strtok((char *)raw_command.data(), " ");
     args.push_back(token);
@@ -91,13 +91,13 @@ void AsyncWorker::execute(const Message &m)
         rc = read(tevent.ident, buffer, tevent.data);
         if (rc <= 0) { continue; }
         buffer[rc] = '\0';
-        Message m(0, 0, buffer);
-        client << m;
+        Message output(m.id(), 0, buffer);
+        client << output;
       }
       else
       {
-        Message m;
-        client >> m;
+        Message input;
+        client >> input;
         const auto &payload = m.payload();
         write(child, payload.data(), payload.size());
       }
