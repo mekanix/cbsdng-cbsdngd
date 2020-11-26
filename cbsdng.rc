@@ -16,6 +16,7 @@ name=cbsdng
 desc="CBSDng proxy between CBSD and clients"
 rcvar=${name}_enable
 start_precmd="${name}_precmd"
+PATH="${PATH}:/usr/local/bin"
 
 load_rc_config $name
 
