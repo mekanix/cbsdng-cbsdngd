@@ -16,7 +16,6 @@ public:
   AsyncWorker(const int &client);
   ~AsyncWorker();
 
-  static std::list<AsyncWorker *> finished;
   static void removeFinished();
   static void terminate();
   static void wait();
@@ -27,6 +26,7 @@ protected:
   static bool quit;
   static std::mutex mutex;
   static std::condition_variable condition;
+  static std::list<AsyncWorker *> finished;
 
   Client client;
   std::thread t;
