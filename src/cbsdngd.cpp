@@ -14,13 +14,19 @@
 Socket *s;
 
 
-void signalHandler(int sig)
+void cleanup()
 {
-  signal(sig, SIG_IGN);
   AsyncWorker::terminate();
   AsyncWorker::wait();
   s->cleanup();
   delete s;
+}
+
+
+void signalHandler(int sig)
+{
+  signal(sig, SIG_IGN);
+  cleanup();
   exit(0);
 }
 
@@ -75,14 +81,13 @@ int main(int argc, char **argv)
     pidfile << getpid();
     pidfile.close();
   }
-  // auto logger = spdlog::get("default");
-  // logger->warn("Something wrong happened");
 
-  while (1)
+  while (true)
   {
     auto client = s->waitForClient();
     if (client != -1) { new AsyncWorker(client); }
     else { std::cerr << "Error accepting client!\n"; }
   }
+  cleanup();
   return 0;
 }

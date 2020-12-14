@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <vector>
 #include <signal.h>
 #include <sstream>
@@ -21,6 +22,7 @@ std::mutex AsyncWorker::mutex;
 std::condition_variable AsyncWorker::condition;
 std::list<AsyncWorker *> AsyncWorker::finished;
 static auto finishedThread = std::thread(&AsyncWorker::removeFinished);
+static bool parent = true;
 
 
 AsyncWorker::AsyncWorker(const int &cl)
@@ -57,6 +59,8 @@ void AsyncWorker::execute(const Message &m)
   }
   else if (pid == 0) // child
   {
+    parent = false;
+    std::vector<std::string> args;
     std::string command = prefix + m.payload();
     std::string raw_command = "cbsd " + command;
     std::vector<char *> args;
@@ -66,7 +70,15 @@ void AsyncWorker::execute(const Message &m)
     {
       args.push_back(token);
     }
-    execvp(args[0], args.data());
+    char *raw_args[args.size()];
+    for (int i = 0; i < args.size(); ++i)
+    {
+      raw_args[i] = (char *)args[i].data();
+    }
+    execvp(raw_args[0], raw_args);
+    std::cout << "Error code: " << errno;
+    std::cout << ". Error: " << strerror(errno) << std::endl;
+    exit(1);
   }
   else // parent
   {
@@ -98,7 +110,7 @@ void AsyncWorker::execute(const Message &m)
       {
         Message input;
         client >> input;
-        const auto &payload = m.payload();
+        const auto &payload = input.payload();
         write(child, payload.data(), payload.size());
       }
     }
@@ -106,8 +118,8 @@ void AsyncWorker::execute(const Message &m)
     waitpid(pid, &st, 0);
     std::stringstream s;
     s << st;
-    Message m(0, Type::EXIT, s.str());
-    client << m;
+    Message output(m.id(), Type::EXIT, s.str());
+    client << output;
   }
 }
 
@@ -131,6 +143,7 @@ void AsyncWorker::removeFinished()
   {
     std::unique_lock<std::mutex> lock(mutex);
     condition.wait(lock, [] { return !finished.empty(); });
+    if (!parent) { break; }
     auto worker = finished.front();
     finished.pop_front();
     if (worker != nullptr) { delete worker; }
