@@ -27,6 +27,7 @@ protected:
   static std::mutex mutex;
   static std::condition_variable condition;
   static std::list<AsyncWorker *> finished;
+  static bool checkFinished();
 
   Client client;
   std::thread t;
