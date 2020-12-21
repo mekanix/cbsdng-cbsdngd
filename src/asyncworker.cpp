@@ -63,7 +63,6 @@ void AsyncWorker::execute(const Message &m)
     std::vector<std::string> args;
     std::string command = prefix + m.payload();
     std::string raw_command = "cbsd " + command;
-    std::vector<char *> args;
     char *token = strtok((char *)raw_command.data(), " ");
     args.push_back(token);
     while ((token = strtok(nullptr, " ")) != nullptr)
@@ -129,11 +128,13 @@ void AsyncWorker::_process()
   Message m;
   client >> m;
   execute(m);
+  if (parent)
   {
     std::unique_lock<std::mutex> lock(mutex);
     finished.push_back(this);
+    lock.unlock();
+    condition.notify_one();
   }
-  condition.notify_one();
 }
 
 
@@ -142,8 +143,8 @@ void AsyncWorker::removeFinished()
   while (true)
   {
     std::unique_lock<std::mutex> lock(mutex);
-    condition.wait(lock, [] { return !finished.empty(); });
-    if (!parent) { break; }
+    condition.wait(lock, &AsyncWorker::checkFinished);
+    if (!parent) { return; }
     auto worker = finished.front();
     finished.pop_front();
     if (worker != nullptr) { delete worker; }
@@ -155,13 +156,13 @@ void AsyncWorker::removeFinished()
 void AsyncWorker::terminate()
 {
   quit = true;
-  {
-    std::unique_lock<std::mutex> lock(mutex);
-    finished.push_back(nullptr);
-  }
+  std::unique_lock<std::mutex> lock(mutex);
+  finished.push_back(nullptr);
+  lock.unlock();
   condition.notify_all();
 }
 
 
+bool AsyncWorker::checkFinished() { return !finished.empty(); }
 void AsyncWorker::wait() { finishedThread.join(); }
 AsyncWorker::~AsyncWorker() { t.join(); }
