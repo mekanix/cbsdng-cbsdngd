@@ -5,7 +5,7 @@ MANDIR = ${PREFIX}/man/man
 LIBDIR = ${PREFIX}/lib
 INCLUDEDIR = ${PREFIX}/include/cbsdng
 
-CXXFLAGS += -I. -I${LOCALBASE}/include -std=c++17
+CXXFLAGS += -DSPDLOG_SHARED_LIB -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -I. -I${LOCALBASE}/include -std=c++17
 LDADD += -L${LIBDIR}
 LDADD += -pthread
 LDADD += -lfmt

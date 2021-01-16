@@ -21,6 +21,8 @@ public:
   static void wait();
 
   void execute(const Message &m);
+  void executeCBSD(const Message &m);
+  void executeProxy(const int &id);
 
 protected:
   static bool quit;
@@ -31,6 +33,9 @@ protected:
 
   Client client;
   std::thread t;
+  char prefix = 'j';
+  int child;
+  int pid;
 
 private:
   void _process();
